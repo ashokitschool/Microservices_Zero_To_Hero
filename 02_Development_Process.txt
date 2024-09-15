@@ -1,0 +1,246 @@
+===============================================================
+Steps to develop Service Registry Application (Eureka Server)
+===============================================================
+
+1) Create SpringBoot application with below dependency
+
+	 - Eureka Server (spring-cloud-starter-netflix-eureka-server)
+	 - devtools
+
+2) Configure @EnableEurekaServer annotation in boot start class
+
+3) Configure below properties in application.yml file
+
+spring:
+  application:
+    name: 01_Service_Registry
+server:
+  port: 8761
+eureka:
+  client:
+    register-with-eureka: false	
+
+
+Note-1: If "Service-Registry" project port is 8761 then clients can discover service-registry and will register automatically with service-registry. 
+
+Note-2 : If service-registry project running on any other port number then we have to register clients with service-registry manually.
+
+4) Once application started we can access Eureka Dashboard using below URL
+
+		URL : http://localhost:8761/
+
+
+
+======================================
+Steps to develop Spring Admin-Server
+======================================
+
+1) Create Boot application with "admin-server" dependency 
+	(select it while creating the project)
+
+2) Configure @EnableAdminServer annotation at start class	
+
+3) Change Port Number (Optional)
+
+spring:
+  application:
+    name: 02_Admin_Server
+server:
+  port: 1111
+
+
+4) Run the boot application
+
+5) Access application URL in browser (We can see Admin Server UI)
+
+		URL : http://localhost:1111/
+
+
+======================================
+Steps to work with Zipkin Server
+======================================		
+
+1) Download Zipin Jar file 
+
+		URL : https://zipkin.io/pages/quickstart.html
+
+2) Run zipkin jar file 
+
+		$ java -jar <jar-name>		
+
+3) Zipkin Server Runs on Port Number 9411	
+
+4) Access zipkin server dashboard
+
+		URL : http://localhost:9411/	
+
+
+#################################
+Steps to develop WELCOME-API
+#################################	
+
+1) Create Spring Boot application with below dependencies
+
+		- eureka-discovery-client
+		- admin-client	
+		- zipkin
+
+		- starter-web
+		- devtools
+		- actuator
+
+2) Configure @EnableDiscoveryClient annotation at boot start class.
+
+3) Create RestController with required method
+
+@RestController
+public class WelcomeRestController {
+
+	@GetMapping("/welcome")
+	public String getWelcomeMsg() {
+		String msg = "Welcome To Ashok IT..!!";
+		return msg;
+	}
+}
+
+4) Configure below properties in application.yml file
+
+-----------------------------------------------------
+spring:
+  application:
+    name: 04_Welcome_Service
+  boot:
+    admin:
+      client:
+        url: http://localhost:1111/
+server:
+  port: 8081
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+--------------------------------------------------------
+
+5) Run the application and check in Eureka Dashboard (It should display in eureka dashboard)
+
+6) Check Admin Server Dashboard (It should display) (we can access application details from here)
+
+	Ex: Beans, loggers, heap dump, thred dump, metrics, mappings etc...
+
+
+7) Send Request to REST API method
+
+8) Check Zipkin Server UI and click on Run Query button
+	(it will display trace-id with details)
+
+
+
+#################################
+Steps to develop GREET-API
+#################################
+
+1) Create Spring Boot application with below dependencies
+
+		- eureka-discovery-client
+		- admin-client	
+		- zipkin
+
+		- starter-web
+		- devtools
+		- actuator
+
+		- openfeign
+
+
+2) Configure @EnableDiscoveryClient annotation at boot start class.
+
+3) Create RestController with required method
+
+@RestController
+public class GreetRestController {
+
+	@GetMapping("/greet")
+	public String getGreetMsg() {
+		String msg = "Good Morning";
+		return msg;
+	}
+}
+
+4) Configure below properties in application.yml file
+
+-----------------------------------------------------
+spring:
+  application:
+    name: 05_Greet_Service
+  boot:
+    admin:
+      client:
+        url: http://localhost:1111/
+server:
+  port: 9091
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+--------------------------------------------------------
+
+5) Run the application and check in Eureka Dashboard (It should display in eureka dashboard)
+
+6) Check Admin Server Dashboard (It should display) (we can access application details from here)
+
+	Ex: Beans, loggers, heap dump, thred dump, metrics, mappings etc...
+
+7) Send Request to REST API method
+
+8) Check Zipkin Server UI and click on Run Query button
+	(it will display trace-id with details)
+
+==============================
+Interservice communication
+==============================
+
+=> Add @EnableFeignClients dependency in GREET-API boot start class
+
+=> Create FeignClient interface like below
+
+@FeignClient(name = "WELCOME-API")
+public interface WelcomeApiClient {
+	
+	@GetMapping("/welcome")
+	public String invokeWelcomeMsg();
+
+}
+
+=> Inject feign client into GreetRestController like below
+
+@RestController
+public class GreetRestController {
+	
+	@Autowired
+	private WelcomeApiClient welcomeClient;
+	
+	@GetMapping("/greet")
+	public String getGreetMsg() {
+		
+		String welcomeMsg = welcomeClient.invokeWelcomeMsg();
+		
+		String greetMsg = "Good Morning, ";
+		
+		return greetMsg.concat(welcomeMsg);
+	}
+
+}
+
+=> Run the applications and access greet-api method
+
+	(It should give combined response)

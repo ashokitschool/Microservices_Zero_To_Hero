@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: 02_Admin_Server
+server:
+  port: 1111

@@ -205,6 +205,7 @@ management:
 8) Check Zipkin Server UI and click on Run Query button
 	(it will display trace-id with details)
 
+
 ==============================
 Interservice communication
 ==============================
@@ -244,3 +245,133 @@ public class GreetRestController {
 => Run the applications and access greet-api method
 
 	(It should give combined response)
+
+
+==================
+Load Balancing
+==================
+
+=> If we run our application in one server then burden will be increased on that server.
+
+					1) Single Server should handle all the load
+
+					2) Burden on server
+
+					3) Response delay
+
+					4) Server can crash
+
+					5) Single Point of failure
+
+=> To overcome above problems we will run our application in multiple servers so that we can distribute the requests to multiple servers.
+
+=> Load Balancer is used to distribute requests to multiple servers.	
+
+=> We have below advantages with load balancer.
+
+				1) Less burden on server
+				2) Quick Responses to clients
+				3) No Single point of failure		
+
+===============================
+Load Balancing For Welcome API
+===============================				
+
+1) Remove server port number from welcome api yml file
+
+2) Make changes in rest controller to send port number in response.
+
+
+@RestController
+public class WelcomeRestController {
+
+	@Autowired
+	private Environment env;
+
+	@GetMapping("/welcome")
+	public String getWelcomeMsg() {
+		String port = env.getProperty("server.port");
+		String msg = "Welcome To Ashok IT..!! (" + port + ")";
+		return msg;
+	}
+}
+
+3) Right click => Run as => run configuration => select welcome-api => VM Arguments => -Dserver.port=8081 and apply and run it.
+
+4) Right click => Run as => run configuration => select welcome-api => VM Arguments => -Dserver.port=8082 and apply and run it.
+
+5) Right click => Run as => run configuration => select welcome-api => VM Arguments => -Dserver.port=8083 and apply and run it.
+
+Note: With this our api will run in 3 servers with 3 diff port numbers.
+
+6) Check Eureka Dashboard and observer 3 instances available for welcome-service or not.
+
+7) Start Greet-Service and send request to Greet-Service and check Interservice communication.
+
+
+========================================
+Working with Spring Cloud API Gateway
+========================================
+
+1) Create Spring boot application with below dependencies
+
+		-> eureka-client
+		-> cloud-reactive-gateway
+		-> devtools
+
+2) Configure @EnableDiscoveryClient annotation at boot start class
+
+3) Configure API Gateway Routings in application.yml file like below
+
+spring:
+  application:
+    name: API-Gateway
+  cloud:
+    gateway:
+      routes:
+      - id: api-1
+        uri: lb://WELCOME-SERVICE
+        predicates: 
+          - Path=/welcome
+      - id: api-2
+        uri: lb://GREET-SERVICE
+        predicates: 
+          - Path=/greet
+server:
+  port: 3333
+
+4) Create Filter to validate incoming request
+
+		if request contains below header then it is valid request so process it.
+
+			Secret=ashokit@123
+
+		if above header is not present then it is invalid request, don't process it.					
+
+
+@Component
+public class MyFilter implements GlobalFilter {
+
+	@Override
+	public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+
+		System.out.println(" filter() - executed..... ");
+
+		// validate request
+		
+		ServerHttpRequest request = exchange.getRequest();
+		HttpHeaders headers = request.getHeaders();
+		Set<String> keySet = headers.keySet();
+		
+		if(!keySet.contains("Secret")) {
+			throw new RuntimeException("Invalid Request");
+		}
+		
+		List<String> list = headers.get("Secret");
+		if(!list.get(0).equals("ashokit@123")) {
+			throw new RuntimeException("Invalid Request");
+		}
+		
+		return chain.filter(exchange);
+	}
+}
